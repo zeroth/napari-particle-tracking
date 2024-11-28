@@ -103,24 +103,35 @@ def msd_fit_function(delta, d, alfa):
 def line(x, m, c):
     return m * x + c
 
-def get_goodness_of_fit(msd, delay_time=50.0):
-    # goodness of fit https://www.ncl.ac.uk/webtemplate/ask-assets/external/maths-resources/statistics/regression-and-correlation/coefficient-of-determination-r-squared.html
-    # straight line fit
-    _msd = msd
-    _time_delay = np.arange(0, len(_msd)) *delay_time
-    pp, residuals, _, _, _ = np.polyfit(_time_delay, _msd, 1, full=True)
-    slop, intercept = pp
-    _straing_line_fit = slop * _time_delay + intercept
+# def _get_goodness_of_fit(msd, delay_time=50.0):
+#     # goodness of fit https://www.ncl.ac.uk/webtemplate/ask-assets/external/maths-resources/statistics/regression-and-correlation/coefficient-of-determination-r-squared.html
+#     # straight line fit
+#     _msd = msd
+#     _time_delay = np.arange(0, len(_msd)) *delay_time
+#     pp, residuals, _, _, _ = np.polyfit(_time_delay, _msd, 1, full=True)
+#     slop, intercept = pp
+#     _straing_line_fit = slop * _time_delay + intercept
     
-    y_dash = np.average(_msd)
-    total_some_of_square = np.sum((_msd - y_dash) ** 2)
+#     y_dash = np.average(_msd)
+#     total_some_of_square = np.sum((_msd - y_dash) ** 2)
 
-    r_2 = 1 - (residuals[0]/total_some_of_square)
+#     r_2 = 1 - (residuals[0]/total_some_of_square)
 
-    adjusted_r_2 = 1 - (1 - r_2) * (len(_msd) - 1) / (len(_msd) - len(pp) - 1)
+#     adjusted_r_2 = 1 - (1 - r_2) * (len(_msd) - 1) / (len(_msd) - len(pp) - 1)
 
-    return r_2,  adjusted_r_2, _straing_line_fit, _time_delay
+#     return r_2,  adjusted_r_2, _straing_line_fit, _time_delay
 
+def msd_goodness_of_fit(actual_y, predicted_y, fiting_paramets =2):
+    residual = actual_y - predicted_y
+    residual_some_of_square = np.sum(residual ** 2)
+    
+    y_dash = np.average(actual_y)
+    total_some_of_square = np.sum((actual_y - y_dash) ** 2)
+
+    r_2 = 1 - (residual_some_of_square/total_some_of_square)
+    adjusted_r_2 = 1 - (1 - r_2) * (len(actual_y) - 1) / (len(actual_y) - fiting_paramets)
+
+    return r_2, adjusted_r_2
 
 def basic_msd_fit(
     msd_y, delta=3.8, fit_function=msd_fit_function, maxfev=1000000
@@ -132,4 +143,12 @@ def basic_msd_fit(
     best_value, _ = curve_fit(fit_function, x, y, p0=init, maxfev=maxfev)
     _y = msd_fit_function(x, best_value[0], best_value[1])
 
-    return pd.DataFrame({"alpha": [best_value[1]]* len(y), "fit":_y, "diffusion_coefficient":best_value[0]}, index=x)
+    # r2 : goodness of fit for the msd and _y 
+    r_2, adjusted_r_2 = msd_goodness_of_fit(y, _y)
+    
+
+    return pd.DataFrame({"alpha": [best_value[1]]* len(y), 
+                         "fit":_y, 
+                         "diffusion_coefficient":best_value[0], 
+                         "r_2": r_2, 
+                         "adjusted_r_2":adjusted_r_2}, index=x)
